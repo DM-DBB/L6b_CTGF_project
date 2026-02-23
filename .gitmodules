@@ -1,0 +1,6 @@
+[submodule "Burst_Analysis_CTGF"]
+	path = Electrophysiology_Burst analysis
+	url = https://github.com/anlo5007/Burst_Analysis_CTGF.git
+[submodule "Autocorrelation_Calcium"]
+	path = Calcium Imaging_Autocorrelation analysis
+	url = https://github.com/anlo5007/Autocorrelation_Calcium.git
