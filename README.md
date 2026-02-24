@@ -131,7 +131,7 @@ Automated stand-alone detection and characterization of multispike firing patter
 ### Python Environment
 - Python 3.9 or later
 - Jupyter Notebook or JupyterLab
-- Core scientific Python stack ( `numpy`, `pandas`, `matplotlib`, `seaborn`, `scipy`)
+- Core scientific Python stack ( `numpy`, `pandas`, `matplotlib`, `seaborn`, `scipy`, `scikit-image`)
 
 > Note: each notebook may require additional project-specific input files and package versions. 
 
