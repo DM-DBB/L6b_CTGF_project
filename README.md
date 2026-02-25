@@ -177,7 +177,7 @@ The MATLAB submodules (`Calcium Imaging_Autocorrelation analysis/` and `Electrop
 
 * Debora Masini and Andrea Locarno (2026): https://github.com/DM-DBB/Scripts-for-article_first-submission_V23_02_2026.git.
 
-* Please cite also the associated manuscript/article: Khalid, R., Masini, D., Locarno, A. et al. <!-- Title--> <!-- Journal--> <!-- DOI-->
+* Please cite also the associated manuscript/article: Khalid, R., Masini, D., Locarno, A. et al. Cortical Layer 6b Persistent Subplate Neurons Reciprocally Connect Sensorimotor Areas and Inversely Reflect Somatosensory Engagement. <!-- Journal and publication year--> <!-- DOI-->
 
 ## Contact
 
