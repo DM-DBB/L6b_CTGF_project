@@ -20,7 +20,6 @@ jobs:
         run: zip -r release.zip . -x "*.git*" -x "*/resources*"
 
       - name: Build metadata
-        id: metadata
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
@@ -60,9 +59,9 @@ jobs:
           if license_id and license_id != "NOASSERTION":
             metadata["metadata"]["license"] = license_id.lower()
 
-          print("Metadata:", json.dumps(metadata))
-          with open(os.environ["GITHUB_OUTPUT"], "a") as f:
-            f.write(f"METADATA={json.dumps(json.dumps(metadata))}\n")
+          print("Metadata:", json.dumps(metadata, indent=2))
+          with open("metadata.json", "w") as f:
+            json.dump(metadata, f)
           EOF
 
       - name: Create or update Zenodo deposition
@@ -70,7 +69,6 @@ jobs:
         env:
           ZENODO_TOKEN: ${{ secrets.ZENODO_TOKEN }}
           RECORD_ID: ${{ inputs.zenodo_record_id }}
-          METADATA: ${{ steps.metadata.outputs.METADATA }}
         run: |
           if [ -z "$RECORD_ID" ]; then
             echo "First run: creating new deposit..."
@@ -78,7 +76,7 @@ jobs:
               "https://zenodo.org/api/deposit/depositions" \
               -H "Authorization: Bearer $ZENODO_TOKEN" \
               -H "Content-Type: application/json" \
-              -d "$METADATA")
+              -d @metadata.json)
           else
             echo "Subsequent run: creating new version..."
             RESPONSE=$(curl -s -X POST \
@@ -89,12 +87,11 @@ jobs:
               "$DRAFT_URL" \
               -H "Authorization: Bearer $ZENODO_TOKEN")
             DEPOSITION_ID=$(echo $RESPONSE | python3 -c 'import sys,json; print(json.load(sys.stdin)["id"])')
-            # Update metadata on new version
             curl -s -X PUT \
               "https://zenodo.org/api/deposit/depositions/$DEPOSITION_ID" \
               -H "Authorization: Bearer $ZENODO_TOKEN" \
               -H "Content-Type: application/json" \
-              -d "$METADATA"
+              -d @metadata.json
             RESPONSE=$(curl -s -X GET \
               "https://zenodo.org/api/deposit/depositions/$DEPOSITION_ID" \
               -H "Authorization: Bearer $ZENODO_TOKEN")
