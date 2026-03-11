@@ -71,14 +71,14 @@ jobs:
           RECORD_ID: ${{ inputs.zenodo_record_id }}
         run: |
           if [ -z "$RECORD_ID" ]; then
-            echo "First run: creating new deposit..."
+            echo "First run: creating new draft..."
             RESPONSE=$(curl -s -X POST \
               "https://zenodo.org/api/deposit/depositions" \
               -H "Authorization: Bearer $ZENODO_TOKEN" \
               -H "Content-Type: application/json" \
               -d @metadata.json)
           else
-            echo "Subsequent run: creating new version..."
+            echo "Subsequent run: creating new version draft..."
             RESPONSE=$(curl -s -X POST \
               "https://zenodo.org/api/deposit/depositions/$RECORD_ID/actions/newversion" \
               -H "Authorization: Bearer $ZENODO_TOKEN")
@@ -134,11 +134,3 @@ jobs:
             "${{ steps.get_id.outputs.BUCKET_URL }}/release.zip" \
             -H "Authorization: Bearer $ZENODO_TOKEN" \
             --upload-file release.zip
-
-      - name: Publish deposition
-        env:
-          ZENODO_TOKEN: ${{ secrets.ZENODO_TOKEN }}
-        run: |
-          curl -s -X POST \
-            "https://zenodo.org/api/deposit/depositions/${{ steps.get_id.outputs.DEPOSITION_ID }}/actions/publish" \
-            -H "Authorization: Bearer $ZENODO_TOKEN"
