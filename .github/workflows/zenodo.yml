@@ -2,6 +2,11 @@ name: Upload to Zenodo with submodules
 
 on:
   workflow_dispatch:
+    inputs:
+      zenodo_record_id:
+        description: 'Zenodo record ID for new version (leave empty for first run)'
+        required: false
+        default: ''
 
 jobs:
   zenodo-upload:
@@ -14,16 +19,29 @@ jobs:
       - name: Create archive
         run: zip -r release.zip . -x "*.git*" -x "*/resources*"
 
-      - name: Get Zenodo deposition ID
+      - name: Create or update Zenodo deposition
         id: get_id
         env:
           ZENODO_TOKEN: ${{ secrets.ZENODO_TOKEN }}
+          RECORD_ID: ${{ inputs.zenodo_record_id }}
         run: |
-          RESPONSE=$(curl -s -X POST \
-            "https://zenodo.org/api/deposit/depositions" \
-            -H "Authorization: Bearer $ZENODO_TOKEN" \
-            -H "Content-Type: application/json" \
-            -d '{}')
+          if [ -z "$RECORD_ID" ]; then
+            echo "First run: creating new deposit..."
+            RESPONSE=$(curl -s -X POST \
+              "https://zenodo.org/api/deposit/depositions" \
+              -H "Authorization: Bearer $ZENODO_TOKEN" \
+              -H "Content-Type: application/json" \
+              -d '{}')
+          else
+            echo "Subsequent run: creating new version..."
+            RESPONSE=$(curl -s -X POST \
+              "https://zenodo.org/api/deposit/depositions/$RECORD_ID/actions/newversion" \
+              -H "Authorization: Bearer $ZENODO_TOKEN")
+            DRAFT_URL=$(echo $RESPONSE | python3 -c 'import sys,json; print(json.load(sys.stdin)["links"]["latest_draft"])')
+            RESPONSE=$(curl -s -X GET \
+              "$DRAFT_URL" \
+              -H "Authorization: Bearer $ZENODO_TOKEN")
+          fi
           echo "API Response: $RESPONSE"
           DEPOSITION_ID=$(echo $RESPONSE | python3 -c 'import sys,json; print(json.load(sys.stdin)["id"])')
           BUCKET_URL=$(echo $RESPONSE | python3 -c 'import sys,json; print(json.load(sys.stdin)["links"]["bucket"])')
@@ -31,6 +49,25 @@ jobs:
           echo "Bucket URL: $BUCKET_URL"
           echo "DEPOSITION_ID=$DEPOSITION_ID" >> $GITHUB_OUTPUT
           echo "BUCKET_URL=$BUCKET_URL" >> $GITHUB_OUTPUT
+
+      - name: Delete old files from new version draft
+        env:
+          ZENODO_TOKEN: ${{ secrets.ZENODO_TOKEN }}
+        run: |
+          FILES=$(curl -s \
+            "https://zenodo.org/api/deposit/depositions/${{ steps.get_id.outputs.DEPOSITION_ID }}/files" \
+            -H "Authorization: Bearer $ZENODO_TOKEN")
+          echo $FILES | python3 -c '
+          import sys, json, urllib.request
+          files = json.load(sys.stdin)
+          for f in files:
+            req = urllib.request.Request(
+              f"https://zenodo.org/api/deposit/depositions/${{ steps.get_id.outputs.DEPOSITION_ID }}/files/{f[\"id\"]}",
+              headers={"Authorization": "Bearer ${{ secrets.ZENODO_TOKEN }}"},
+              method="DELETE"
+            )
+            urllib.request.urlopen(req)
+          '
 
       - name: Upload archive
         env:
