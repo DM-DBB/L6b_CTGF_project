@@ -19,11 +19,58 @@ jobs:
       - name: Create archive
         run: zip -r release.zip . -x "*.git*" -x "*/resources*"
 
+      - name: Build metadata
+        id: metadata
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          python3 << 'EOF'
+          import json, urllib.request, os
+
+          repo = os.environ.get("GITHUB_REPOSITORY")
+          token = os.environ.get("GH_TOKEN")
+          headers = {"Authorization": f"Bearer {token}", "Accept": "application/vnd.github+json"}
+
+          # Get repo info
+          req = urllib.request.Request(f"https://api.github.com/repos/{repo}", headers=headers)
+          repo_data = json.load(urllib.request.urlopen(req))
+          title = repo_data.get("name", "")
+          description = repo_data.get("description", "") or ""
+          license_id = (repo_data.get("license") or {}).get("spdx_id", "")
+
+          # Get contributors
+          req = urllib.request.Request(f"https://api.github.com/repos/{repo}/contributors", headers=headers)
+          contributors = json.load(urllib.request.urlopen(req))
+          creators = []
+          for c in contributors:
+            username = c["login"]
+            req = urllib.request.Request(f"https://api.github.com/users/{username}", headers=headers)
+            user_data = json.load(urllib.request.urlopen(req))
+            name = user_data.get("name") or username
+            creators.append({"name": name})
+
+          metadata = {
+            "metadata": {
+              "title": title,
+              "upload_type": "software",
+              "description": description if description else title,
+              "creators": creators
+            }
+          }
+          if license_id and license_id != "NOASSERTION":
+            metadata["metadata"]["license"] = license_id.lower()
+
+          print("Metadata:", json.dumps(metadata))
+          with open(os.environ["GITHUB_OUTPUT"], "a") as f:
+            f.write(f"METADATA={json.dumps(json.dumps(metadata))}\n")
+          EOF
+
       - name: Create or update Zenodo deposition
         id: get_id
         env:
           ZENODO_TOKEN: ${{ secrets.ZENODO_TOKEN }}
           RECORD_ID: ${{ inputs.zenodo_record_id }}
+          METADATA: ${{ steps.metadata.outputs.METADATA }}
         run: |
           if [ -z "$RECORD_ID" ]; then
             echo "First run: creating new deposit..."
@@ -31,7 +78,7 @@ jobs:
               "https://zenodo.org/api/deposit/depositions" \
               -H "Authorization: Bearer $ZENODO_TOKEN" \
               -H "Content-Type: application/json" \
-              -d '{}')
+              -d "$METADATA")
           else
             echo "Subsequent run: creating new version..."
             RESPONSE=$(curl -s -X POST \
@@ -40,6 +87,16 @@ jobs:
             DRAFT_URL=$(echo $RESPONSE | python3 -c 'import sys,json; print(json.load(sys.stdin)["links"]["latest_draft"])')
             RESPONSE=$(curl -s -X GET \
               "$DRAFT_URL" \
+              -H "Authorization: Bearer $ZENODO_TOKEN")
+            DEPOSITION_ID=$(echo $RESPONSE | python3 -c 'import sys,json; print(json.load(sys.stdin)["id"])')
+            # Update metadata on new version
+            curl -s -X PUT \
+              "https://zenodo.org/api/deposit/depositions/$DEPOSITION_ID" \
+              -H "Authorization: Bearer $ZENODO_TOKEN" \
+              -H "Content-Type: application/json" \
+              -d "$METADATA"
+            RESPONSE=$(curl -s -X GET \
+              "https://zenodo.org/api/deposit/depositions/$DEPOSITION_ID" \
               -H "Authorization: Bearer $ZENODO_TOKEN")
           fi
           echo "API Response: $RESPONSE"
