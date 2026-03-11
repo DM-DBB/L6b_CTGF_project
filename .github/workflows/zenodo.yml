@@ -1,0 +1,50 @@
+name: Upload to Zenodo with submodules
+
+on:
+  workflow_dispatch:
+
+jobs:
+  zenodo-upload:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          submodules: recursive
+
+      - name: Create archive
+        run: zip -r release.zip . -x "*.git*" -x "*/resources/projects/*"
+
+      - name: Get Zenodo deposition ID
+        id: get_id
+        env:
+          ZENODO_TOKEN: ${{ secrets.ZENODO_TOKEN }}
+        run: |
+          RESPONSE=$(curl -s -X POST \
+            "https://zenodo.org/api/deposit/depositions" \
+            -H "Authorization: Bearer $ZENODO_TOKEN" \
+            -H "Content-Type: application/json" \
+            -d '{}')
+          echo "API Response: $RESPONSE"
+          DEPOSITION_ID=$(echo $RESPONSE | python3 -c 'import sys,json; print(json.load(sys.stdin)["id"])')
+          BUCKET_URL=$(echo $RESPONSE | python3 -c 'import sys,json; print(json.load(sys.stdin)["links"]["bucket"])')
+          echo "Deposition ID: $DEPOSITION_ID"
+          echo "Bucket URL: $BUCKET_URL"
+          echo "DEPOSITION_ID=$DEPOSITION_ID" >> $GITHUB_OUTPUT
+          echo "BUCKET_URL=$BUCKET_URL" >> $GITHUB_OUTPUT
+
+      - name: Upload archive
+        env:
+          ZENODO_TOKEN: ${{ secrets.ZENODO_TOKEN }}
+        run: |
+          curl -s -X PUT \
+            "${{ steps.get_id.outputs.BUCKET_URL }}/release.zip" \
+            -H "Authorization: Bearer $ZENODO_TOKEN" \
+            --upload-file release.zip
+
+      - name: Publish deposition
+        env:
+          ZENODO_TOKEN: ${{ secrets.ZENODO_TOKEN }}
+        run: |
+          curl -s -X POST \
+            "https://zenodo.org/api/deposit/depositions/${{ steps.get_id.outputs.DEPOSITION_ID }}/actions/publish" \
+            -H "Authorization: Bearer $ZENODO_TOKEN"
