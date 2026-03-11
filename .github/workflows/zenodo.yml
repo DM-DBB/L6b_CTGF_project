@@ -4,7 +4,7 @@ on:
   workflow_dispatch:
     inputs:
       zenodo_record_id:
-        description: 'Zenodo record ID for new version (leave empty for first run)'
+        description: 'Zenodo record ID for new version (leave empty for first run). Find it in the URL of your Zenodo deposit: https://zenodo.org/records/XXXXXXX or at the end of the DOI: 10.5281/zenodo.XXXXXXX'
         required: false
         default: ''
 
@@ -54,20 +54,23 @@ jobs:
         env:
           ZENODO_TOKEN: ${{ secrets.ZENODO_TOKEN }}
         run: |
-          FILES=$(curl -s \
+          curl -s \
             "https://zenodo.org/api/deposit/depositions/${{ steps.get_id.outputs.DEPOSITION_ID }}/files" \
-            -H "Authorization: Bearer $ZENODO_TOKEN")
-          echo $FILES | python3 -c '
+            -H "Authorization: Bearer $ZENODO_TOKEN" | \
+          python3 -c "
           import sys, json, urllib.request
           files = json.load(sys.stdin)
           for f in files:
+            file_id = f['id']
+            deposition_id = '${{ steps.get_id.outputs.DEPOSITION_ID }}'
+            token = '${{ secrets.ZENODO_TOKEN }}'
             req = urllib.request.Request(
-              f"https://zenodo.org/api/deposit/depositions/${{ steps.get_id.outputs.DEPOSITION_ID }}/files/{f[\"id\"]}",
-              headers={"Authorization": "Bearer ${{ secrets.ZENODO_TOKEN }}"},
-              method="DELETE"
+              f'https://zenodo.org/api/deposit/depositions/{deposition_id}/files/{file_id}',
+              headers={'Authorization': f'Bearer {token}'},
+              method='DELETE'
             )
             urllib.request.urlopen(req)
-          '
+          "
 
       - name: Upload archive
         env:
