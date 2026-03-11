@@ -76,7 +76,7 @@ A sequential pipeline for analyzing miniscope calcium imaging data, designed to 
     * Quantifies within session variability in calcium signal amplitude and reports dynamic range metrics
 
 2.  `Calcium Imaging_plot S1 first 10min heatmap (2).ipynb`
-    * Generates heatmap visualizations of neural activity during the initial 10-minute recording period in S1 cortex
+    * Generates heatmap visualizations of neural activity
 
 3.  `Calcium Imaging_for analysis of neuronal activity episodes and cofluctuating pairs (3).ipynb`
     * Identifies pairwise coactivity and analyzes temporal patterns of synchronized activity episodes
@@ -175,7 +175,7 @@ The MATLAB submodules (`Calcium Imaging_Autocorrelation analysis/` and `Electrop
 
 ### Cite as 
 
-* Debora Masini and Andrea Locarno (2026): https://github.com/DM-DBB/Scripts-for-article_first-submission_V23_02_2026.git.
+* Debora Masini and Andrea Locarno (2026): https://github.com/DM-DBB/L6b_CTGF_project.git.
 
 * Please cite also the associated manuscript/article: Khalid, R., Masini, D., Locarno, A. et al. Cortical Layer 6b Persistent Subplate Neurons Reciprocally Connect Sensorimotor Areas and Inversely Reflect Somatosensory Engagement. <!-- Journal and publication year--> <!-- DOI-->
 
