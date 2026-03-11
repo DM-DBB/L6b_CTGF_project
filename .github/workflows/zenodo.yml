@@ -12,7 +12,7 @@ jobs:
           submodules: recursive
 
       - name: Create archive
-        run: zip -r release.zip . -x "*.git*" -x "*/resources/projects/*"
+        run: zip -r release.zip . -x "*.git*" -x "*/resources*"
 
       - name: Get Zenodo deposition ID
         id: get_id
